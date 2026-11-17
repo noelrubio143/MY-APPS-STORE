@@ -39,7 +39,6 @@ p{line-height:1.5;color:var(--muted)}
 <header>
   <h1>Aking App Store</h1>
   <input id="q" type="search" placeholder="Maghanap ng app">
-  <div id="cats"></div>
 </header>
 <main id="list"></main>
 <p class="note">Kung hindi ma-install: i-allow ang "Install unknown apps" para sa browser mo.</p>
@@ -49,33 +48,26 @@ p{line-height:1.5;color:var(--muted)}
 let APPS=[];
 
 const $=id=>document.getElementById(id);
-let cat="Lahat";
-function buildCats(){const cats=["Lahat",...new Set(APPS.map(a=>a.cat))];
-$("cats").innerHTML=cats.map(c=>`<button class="chip${c==cat?" on":""}" data-c="${c}">${c}</button>`).join("")}
-$("cats").onclick=e=>{if(e.target.dataset.c){cat=e.target.dataset.c;
- document.querySelectorAll(".chip").forEach(b=>b.classList.toggle("on",b.dataset.c==cat));render()}};
 $("q").oninput=render;
 
+function esc(t){return String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 function render(){
  const q=$("q").value.toLowerCase();
- const r=APPS.map((a,i)=>({a,i})).filter(({a})=>(cat=="Lahat"||a.cat==cat)&&a.name.toLowerCase().includes(q));
- $("list").innerHTML=r.length?r.map(({a,i})=>`<div class="row" onclick="show(${i})">
-  <img class="ic" src="${a.icon}" alt="" onerror="fb(this)" data-n="${a.name}"><div><b>${a.name}</b><small>${a.cat} • ${a.size}</small></div></div>`).join(""):"<p>Walang nahanap.</p>";
+ const r=APPS.map((a,i)=>({a,i})).filter(({a})=>a.name.toLowerCase().includes(q));
+ $("list").innerHTML=r.length?r.map(({a,i})=>`<div class="row" onclick="show(${i})"><div><b>${esc(a.name)}</b></div></div>`).join(""):"<p>Walang nahanap.</p>";
 }
 function show(i){
  const a=APPS[i];
  $("di").innerHTML=`<button class="back" onclick="hide()">←</button>
- <div class="head"><img class="ic" src="${a.icon}" alt="" onerror="fb(this)" data-n="${a.name}"><div><h2>${a.name}</h2><small>${a.cat}</small></div></div>
- <div class="stats"><div><b>${a.version}</b>Bersyon</div><div><b>${a.size}</b>Laki</div><div><b>${a.android}</b>Android</div></div>
- <a class="inst" href="${a.apk}" download>I-download ang APK</a>
- <div class="shots">${a.shots.map(s=>`<img src="${s}" alt="">`).join("")}</div>
- <h3>Tungkol sa app</h3><p>${a.desc}</p>`;
+ <div class="head"><h2>${esc(a.name)}</h2></div>
+ <div class="stats"><div><b>${esc(a.version)}</b>Bersyon</div><div><b>${esc(a.size)}</b>Laki</div></div>
+ <a class="inst" href="${esc(a.apk)}" download>I-download ang APK</a>
+ ${a.desc?`<h3>Tungkol sa app</h3><p>${esc(a.desc)}</p>`:""}`;
  $("d").style.display="block";history.pushState(0,"");
 }
-function fb(img){const d=document.createElement("div");d.className=img.className+" fb";d.textContent=img.dataset.n[0];img.replaceWith(d)}
 function hide(){$("d").style.display="none"}
 addEventListener("popstate",hide);
-fetch("apps.json?"+Date.now()).then(r=>r.json()).then(j=>{APPS=j;buildCats();render()}).catch(()=>render());
+fetch("apps.json?"+Date.now()).then(r=>r.json()).then(j=>{APPS=j;render()}).catch(()=>render());
 </script>
 </body>
 </html>
