@@ -24,9 +24,8 @@ small{color:var(--muted)}
 <input id="tk" type="password" placeholder="github_pat_..." autocomplete="off">
 <small>Nakatago lang ito sa browser mo hanggang isara ang tab. Hindi ito nase-save sa site.</small>
 <hr>
-<label>APK file (o laktawan kung may link sa ibaba)</label><input id="ap" type="file" accept=".apk">
-<label>O link ng APK (kung nasa Releases na)</label><input id="al" type="url" placeholder="https://github.com/.../releases/download/...">
-<label>Laki (MB, kung link ang gamit)</label><input id="sz" placeholder="hal. 68.6">
+<label>Link ng APK (galing sa Releases)</label><input id="al" type="url" placeholder="https://github.com/.../releases/download/...">
+<label>Laki (MB)</label><input id="sz" placeholder="hal. 68.6">
 <label>Icon (PNG, optional)</label><input id="ic" type="file" accept="image/*">
 <label>Pangalan ng app</label><input id="nm">
 <label>Category</label><input id="ct" placeholder="hal. Tools, Games, VPN">
@@ -49,28 +48,15 @@ async function gh(url,opt={}){
  return j;
 }
 async function run(){
- const tk=$("tk").value.trim(),f=$("ap").files[0],name=$("nm").value.trim(),ver=$("vr").value.trim();
+ const tk=$("tk").value.trim(),name=$("nm").value.trim(),ver=$("vr").value.trim();
  const al=$("al").value.trim();
- if(!tk||(!f&&!al)||!name||!ver){alert("Kailangan: token, APK file o link, pangalan, at bersyon.");return}
+ if(!tk||!al||!name||!ver){alert("Kailangan: token, link ng APK, pangalan, at bersyon.");return}
  sessionStorage.setItem("tk",tk);
  $("go").disabled=true;$("log").textContent="";
  try{
   const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,"");
   const tag=slug+"-"+ver;
-  let apk=al;
-  if(f){
-   log("1/4 Gumagawa ng release...");
-   let rel;
-   try{rel=await gh(`https://api.github.com/repos/${REPO}/releases`,{method:"POST",body:JSON.stringify({tag_name:tag,name:name+" "+ver})})}
-   catch(e){rel=await gh(`https://api.github.com/repos/${REPO}/releases/tags/${tag}`)}
-   log("2/4 Ina-upload ang APK ("+(f.size/1048576).toFixed(1)+" MB), hintayin...");
-   try{
-    const asset=await gh(`https://uploads.github.com/repos/${REPO}/releases/${rel.id}/assets?name=${encodeURIComponent(f.name)}`,{method:"POST",headers:{"Content-Type":"application/vnd.android.package-archive"},body:f});
-    apk=asset.browser_download_url;
-   }catch(e){
-    throw new Error("Hindi ma-upload ang APK mula sa browser ("+e.message+"). I-upload ito sa Releases mismo, tapos ilagay ang link sa field na 'link ng APK' at subukan ulit nang walang APK file.");
-   }
-  }
+  const apk=al;
   let icon="";
   const ic=$("ic").files[0];
   if(ic){
@@ -82,7 +68,7 @@ async function run(){
   log("4/4 Dinadagdag sa listahan...");
   const cur=await gh(`https://api.github.com/repos/${REPO}/contents/apps.json`);
   const list=JSON.parse(unb64(cur.content));
-  const entry={name,cat:$("ct").value.trim()||"Iba pa",icon,version:ver,size:(f?(f.size/1048576).toFixed(1):($("sz").value.trim()||"?"))+" MB",android:$("an").value.trim(),desc:$("ds").value.trim(),shots:[],apk};
+  const entry={name,cat:$("ct").value.trim()||"Iba pa",icon,version:ver,size:($("sz").value.trim()||"?")+" MB",android:$("an").value.trim(),desc:$("ds").value.trim(),shots:[],apk};
   const i=list.findIndex(a=>a.name.toLowerCase()==name.toLowerCase());
   if(i>=0)list[i]=entry;else list.push(entry);
   await gh(`https://api.github.com/repos/${REPO}/contents/apps.json`,{method:"PUT",body:JSON.stringify({message:"add "+name,content:b64(JSON.stringify(list,null,1)),sha:cur.sha})});
