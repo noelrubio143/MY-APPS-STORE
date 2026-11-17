@@ -1,13 +1,9 @@
 [
  {
   "name": "AMBER V2RAY",
-  "cat": "VPN",
-  "icon": "icons/amberv2ray.png",
   "version": "1.0.14",
   "size": "68.6 MB",
-  "android": "8.0+",
   "desc": "",
-  "shots": [],
   "apk": "https://github.com/noelrubio143/MY-APPS-STORE/releases/download/1.0.14/1.0.14.apk"
  }
 ]
