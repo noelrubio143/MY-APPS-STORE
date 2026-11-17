@@ -46,25 +46,12 @@ p{line-height:1.5;color:var(--muted)}
 <div id="d"><div class="in" id="di"></div></div>
 
 <script>
-/* DITO MAGDAGDAG NG APP. Kopyahin ang isang { ... } block at lagyan ng kuwit. */
-const APPS=[
- {
-  name:"AMBERV2RAY",
-  cat:"VPN",
-  icon:"icons/amberv2ray.png",
-  version:"1.0.9",
-  size:"68.6 MB",
-  android:"8.0+",
-  desc:"AMBERV2RAY, isang V2Ray client para sa Android. I-download ang APK at i-install.",
-  shots:[],
-  apk:"https://github.com/noelrubio143/MY-APPS-STORE/releases/download/1.0.9/AMBERV2RAY.apk"
- }
-];
+let APPS=[];
 
 const $=id=>document.getElementById(id);
 let cat="Lahat";
-const cats=["Lahat",...new Set(APPS.map(a=>a.cat))];
-$("cats").innerHTML=cats.map(c=>`<button class="chip${c==cat?" on":""}" data-c="${c}">${c}</button>`).join("");
+function buildCats(){const cats=["Lahat",...new Set(APPS.map(a=>a.cat))];
+$("cats").innerHTML=cats.map(c=>`<button class="chip${c==cat?" on":""}" data-c="${c}">${c}</button>`).join("")}
 $("cats").onclick=e=>{if(e.target.dataset.c){cat=e.target.dataset.c;
  document.querySelectorAll(".chip").forEach(b=>b.classList.toggle("on",b.dataset.c==cat));render()}};
 $("q").oninput=render;
@@ -88,7 +75,7 @@ function show(i){
 function fb(img){const d=document.createElement("div");d.className=img.className+" fb";d.textContent=img.dataset.n[0];img.replaceWith(d)}
 function hide(){$("d").style.display="none"}
 addEventListener("popstate",hide);
-render();
+fetch("apps.json?"+Date.now()).then(r=>r.json()).then(j=>{APPS=j;buildCats();render()}).catch(()=>render());
 </script>
 </body>
 </html>
