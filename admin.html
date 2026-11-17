@@ -15,32 +15,28 @@ label{font-size:.85rem;color:var(--muted)}
 button{width:100%;background:var(--accent);color:#fff;border:0;border-radius:24px;padding:13px;font-weight:600;font-size:1rem}
 button:disabled{opacity:.5}
 #log{white-space:pre-wrap;font-size:.9rem;margin-top:14px;line-height:1.5}
-small{color:var(--muted)}
 progress{width:100%;height:14px;margin-top:10px;display:none}
+small{color:var(--muted)}
 </style>
 </head>
 <body>
 <h2>Admin: Magdagdag ng App</h2>
-<label>GitHub token <small>(kailangan ang Contents: Read &amp; write)</small></label>
+<label>GitHub token <small>(Contents at Actions: Read &amp; write)</small></label>
 <input id="tk" type="password" placeholder="github_pat_..." autocomplete="off">
 <small>Nakatago lang ito sa browser mo hanggang isara ang tab. Hindi ito nase-save sa site.</small>
 <hr>
-<label>APK file (ia-upload direkta sa Release)</label><input id="af" type="file" accept=".apk,application/vnd.android.package-archive">
-<label>O kaya, link ng APK (kung naka-upload na; hindi na kailangan kung may file sa taas)</label><input id="al" type="url" placeholder="https://github.com/.../releases/download/...">
-<label>Laki (MB) <small>- awtomatiko kapag may file</small></label><input id="sz" placeholder="hal. 68.6">
-<label>Icon (PNG, optional)</label><input id="ic" type="file" accept="image/*">
-<label>Pangalan ng app</label><input id="nm">
-<label>Category</label><input id="ct" placeholder="hal. Tools, Games, VPN">
-<label>Bersyon</label><input id="vr" placeholder="hal. 1.0">
-<label>Android</label><input id="an" value="8.0+">
-<label>Paglalarawan</label><textarea id="ds" rows="4"></textarea>
-<button id="go" onclick="run()">I-upload at idagdag</button>
+<label>Tag</label><input id="tg" placeholder="hal. v1.0">
+<label>Title</label><input id="tt" placeholder="hal. Pangalan ng App 1.0">
+<label>Paglalarawan <small>(notes ng Release)</small></label><textarea id="ds" rows="4"></textarea>
+<label>APK file</label><input id="af" type="file" accept=".apk,application/vnd.android.package-archive">
+<button id="go" onclick="run()">I-upload sa Release at idagdag</button>
 <progress id="pg" max="100" value="0"></progress>
 <div id="log"></div>
 <script>
 const REPO="noelrubio143/MY-APPS-STORE",$=i=>document.getElementById(i);
 $("tk").value=sessionStorage.getItem("tk")||"";
 const log=t=>$("log").textContent+=t+"\n";
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const b64=s=>btoa(unescape(encodeURIComponent(s)));
 const unb64=s=>decodeURIComponent(escape(atob(s.replace(/\n/g,""))));
 const fileB64=f=>new Promise(r=>{const x=new FileReader();x.onload=()=>r(x.result.split(",")[1]);x.readAsDataURL(f)});
@@ -50,83 +46,62 @@ async function gh(url,opt={}){
  if(!r.ok)throw new Error((j.message||r.status)+" ("+url.split("/").slice(3,7).join("/")+")");
  return j;
 }
-function uploadAsset(url,file,onp){
- return new Promise((res,rej)=>{
-  const x=new XMLHttpRequest();
-  x.open("POST",url);
-  x.setRequestHeader("Authorization","Bearer "+$("tk").value.trim());
-  x.setRequestHeader("Accept","application/vnd.github+json");
-  x.setRequestHeader("Content-Type","application/vnd.android.package-archive");
-  x.upload.onprogress=e=>{if(e.lengthComputable)onp(Math.round(e.loaded/e.total*100))};
-  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}
-   x.status>=200&&x.status<300?res(j):rej(new Error((j.message||x.status)+" (upload APK)"))};
-  const t0=Date.now();let last=0;
-  x.upload.addEventListener("progress",e=>{if(e.lengthComputable)last=Math.round(e.loaded/e.total*100)});
-  x.onerror=()=>rej(new Error("Nabigo ang upload (network) sa "+last+"% matapos ang "+Math.round((Date.now()-t0)/1000)+"s"));
-  x.ontimeout=()=>rej(new Error("Nag-timeout ang upload sa "+last+"%"));
-  x.send(file);
- });
+async function putChunk(api,branch,n,blob){
+ const path=`chunks/part-${String(n).padStart(4,"0")}`;
+ for(let t=1;t<=3;t++){
+  try{
+   return await gh(`${api}/contents/${path}`,{method:"PUT",body:JSON.stringify({message:"part "+n,content:await fileB64(blob),branch})});
+  }catch(e){if(t==3)throw e;await sleep(1500*t)}
+ }
 }
 async function run(){
- const tk=$("tk").value.trim(),name=$("nm").value.trim(),ver=$("vr").value.trim();
- let al=$("al").value.trim();
+ const tk=$("tk").value.trim();
  const af=$("af").files[0];
- if(!tk||(!al&&!af)||!name||!ver){alert("Kailangan: token, APK file (o link), pangalan, at bersyon.");return}
+ let apk="",sizeMB="";
+ const tag=$("tg").value.trim(),title=$("tt").value.trim();
+ if(!tk||!tag||!title||!af){alert("Kailangan: token, tag, title, at APK file.");return}
+ const name=title,ver=tag;
  sessionStorage.setItem("tk",tk);
  $("go").disabled=true;$("log").textContent="";
+ const pg=$("pg");
  try{
-  const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,"");
-  const tag=slug+"-"+ver;
-  let apk=al,sizeMB=$("sz").value.trim();
+  const fname=tag.replace(/[^A-Za-z0-9._-]+/g,"-")+".apk";
+  const api=`https://api.github.com/repos/${REPO}`;
   if(af){
    sizeMB=(af.size/1048576).toFixed(1);
-   const api=`https://api.github.com/repos/${REPO}`;
-   log("1/4 Gumagawa ng Release "+tag+"...");
-   let rel;
-   try{
-    rel=await gh(`${api}/releases`,{method:"POST",body:JSON.stringify({tag_name:tag,name:name+" "+ver,body:$("ds").value.trim(),draft:false,prerelease:false})});
-   }catch(e){
-    rel=await gh(`${api}/releases/tags/${encodeURIComponent(tag)}`);
-    log("   (Meron nang Release na ito, gagamitin na lang)");
+   const base=(await gh(api)).default_branch;
+   let oldId=0;
+   try{const r=await gh(`${api}/releases/tags/${encodeURIComponent(tag)}`);const o=(r.assets||[]).find(a=>a.name===fname);if(o)oldId=o.id}catch(e){}
+   log("1/4 Inihahanda ang pag-upload ("+sizeMB+" MB)...");
+   const sha=(await gh(`${api}/git/ref/heads/${base}`)).object.sha;
+   const branch="upload-"+tag.replace(/[^A-Za-z0-9._-]+/g,"-")+"-"+Date.now();
+   await gh(`${api}/git/refs`,{method:"POST",body:JSON.stringify({ref:"refs/heads/"+branch,sha})});
+   const CH=6*1048576,total=Math.ceil(af.size/CH);
+   pg.style.display="block";pg.value=0;
+   for(let i=0;i<total;i++){
+    log("2/4 Piraso "+(i+1)+" sa "+total+"...");
+    await putChunk(api,branch,i+1,af.slice(i*CH,(i+1)*CH));
+    pg.value=Math.round((i+1)/total*100);
    }
-   const fname=slug+"-"+ver+".apk";
-   const old=(rel.assets||[]).find(a=>a.name===fname);
-   if(old)await gh(`${api}/releases/assets/${old.id}`,{method:"DELETE"});
-   log("2/4 Ina-upload ang APK ("+sizeMB+" MB)...");
-   const pg=$("pg");pg.style.display="block";pg.value=0;
-   const upUrl=rel.upload_url.replace(/\{.*$/,"")+"?name="+encodeURIComponent(fname);
-   let up,lastErr;
-   for(let t=1;t<=3&&!up;t++){
-    try{
-     if(t>1){
-      log("   Subukan ulit ("+t+"/3)...");
-      const cur2=await gh(`${api}/releases/${rel.id}`);
-      const part=(cur2.assets||[]).find(a=>a.name===fname);
-      if(part)await gh(`${api}/releases/assets/${part.id}`,{method:"DELETE"});
-     }
-     pg.value=0;
-     up=await uploadAsset(upUrl,af,v=>pg.value=v);
-    }catch(e){lastErr=e;log("   "+e.message)}
-   }
-   if(!up)throw new Error("Hindi na-upload ang APK. Ginawa na ang Release '"+tag+"' sa GitHub; puwede mong i-upload ang APK doon mano-mano, tapos i-paste ang link sa field ng link at pindutin ulit ang button.");
    pg.style.display="none";
-   apk=up.browser_download_url;
-  }
-  let icon="";
-  const ic=$("ic").files[0];
-  if(ic){
-   log("3/4 Ina-upload ang icon...");
-   icon="icons/"+slug+".png";
-   let sha;try{sha=(await gh(`https://api.github.com/repos/${REPO}/contents/${icon}`)).sha}catch(e){}
-   await gh(`https://api.github.com/repos/${REPO}/contents/${icon}`,{method:"PUT",body:JSON.stringify({message:"icon "+name,content:await fileB64(ic),sha})});
+   log("3/4 Ipinapasok sa Release (GitHub Actions)...");
+   await gh(`${api}/actions/workflows/release-upload.yml/dispatches`,{method:"POST",body:JSON.stringify({ref:base,inputs:{tag,title,notes:$("ds").value.trim(),branch,filename:fname}})});
+   let a=null;
+   for(let i=0;i<120&&!a;i++){
+    await sleep(5000);
+    try{const r=await gh(`${api}/releases/tags/${encodeURIComponent(tag)}`);const f=(r.assets||[]).find(x=>x.name===fname&&x.id!==oldId);if(f)a=f}catch(e){}
+   }
+   if(!a)throw new Error("Hindi pa lumalabas ang APK sa Release. Tingnan ang Actions tab ng repo para sa error, tapos pindutin ulit ang button.");
+   apk=a.browser_download_url;
+   log("   Nasa Release na: "+a.name);
   }
   log("4/4 Dinadagdag sa listahan...");
-  const cur=await gh(`https://api.github.com/repos/${REPO}/contents/apps.json`);
+  const cur=await gh(`${api}/contents/apps.json`);
   const list=JSON.parse(unb64(cur.content));
-  const entry={name,cat:$("ct").value.trim()||"Iba pa",icon,version:ver,size:(sizeMB||"?")+" MB",android:$("an").value.trim(),desc:$("ds").value.trim(),shots:[],apk};
+  const entry={name,cat:"Iba pa",icon:"",version:ver,size:(sizeMB||"?")+" MB",android:"",desc:$("ds").value.trim(),shots:[],apk};
   const i=list.findIndex(a=>a.name.toLowerCase()==name.toLowerCase());
-  if(i>=0)list[i]=entry;else list.push(entry);
-  await gh(`https://api.github.com/repos/${REPO}/contents/apps.json`,{method:"PUT",body:JSON.stringify({message:"add "+name,content:b64(JSON.stringify(list,null,1)),sha:cur.sha})});
+  if(i>=0){const o=list[i];entry.cat=o.cat||entry.cat;entry.icon=o.icon||"";entry.android=o.android||"";entry.shots=o.shots||[]; list[i]=entry}else list.push(entry);
+  await gh(`${api}/contents/apps.json`,{method:"PUT",body:JSON.stringify({message:"add "+name,content:b64(JSON.stringify(list,null,1)),sha:cur.sha})});
   log("\nTapos na! Lalabas ang app sa site pagkatapos ng 1-2 minuto.");
  }catch(e){log("\nMay mali: "+e.message)}
  $("go").disabled=false;$("pg").style.display="none";
