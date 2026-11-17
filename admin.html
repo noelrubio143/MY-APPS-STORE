@@ -98,9 +98,9 @@ async function run(){
   log("4/4 Dinadagdag sa listahan...");
   const cur=await gh(`${api}/contents/apps.json`);
   const list=JSON.parse(unb64(cur.content));
-  const entry={name,cat:"Iba pa",icon:"",version:ver,size:(sizeMB||"?")+" MB",android:"",desc:$("ds").value.trim(),shots:[],apk};
+  const entry={name,version:ver,size:(sizeMB||"?")+" MB",desc:$("ds").value.trim(),apk};
   const i=list.findIndex(a=>a.name.toLowerCase()==name.toLowerCase());
-  if(i>=0){const o=list[i];entry.cat=o.cat||entry.cat;entry.icon=o.icon||"";entry.android=o.android||"";entry.shots=o.shots||[]; list[i]=entry}else list.push(entry);
+  if(i>=0)list[i]=entry;else list.push(entry);
   await gh(`${api}/contents/apps.json`,{method:"PUT",body:JSON.stringify({message:"add "+name,content:b64(JSON.stringify(list,null,1)),sha:cur.sha})});
   log("\nTapos na! Lalabas ang app sa site pagkatapos ng 1-2 minuto.");
  }catch(e){log("\nMay mali: "+e.message)}
