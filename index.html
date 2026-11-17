@@ -16,7 +16,10 @@ h1{margin:0 0 10px;font-size:1.3rem}
 .chip{flex:none;padding:7px 14px;border-radius:16px;border:1px solid var(--muted);background:none;color:var(--text);font-size:.85rem}
 .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
 main{padding:8px 16px;max-width:720px;margin:auto}
-.row{display:flex;gap:14px;align-items:center;padding:12px 0;cursor:pointer}
+.row{display:flex;gap:12px;align-items:center;padding:14px;margin:10px 0;background:var(--card);border-radius:16px}
+.row .t{flex:1;min-width:0;cursor:pointer}
+.row .t b{font-size:1.05rem;overflow-wrap:anywhere}
+.row .dl{flex:none;background:var(--accent);color:#fff;text-decoration:none;padding:10px 16px;border-radius:20px;font-weight:600;font-size:.9rem}
 .ic{width:60px;height:60px;border-radius:14px;background:var(--card);object-fit:cover;flex:none}
 .row b{display:block}.row small{color:var(--muted)}
 #d{position:fixed;inset:0;background:var(--bg);overflow:auto;padding:16px;display:none;z-index:10}
@@ -54,7 +57,7 @@ function esc(t){return String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;","
 function render(){
  const q=$("q").value.toLowerCase();
  const r=APPS.map((a,i)=>({a,i})).filter(({a})=>a.name.toLowerCase().includes(q));
- $("list").innerHTML=r.length?r.map(({a,i})=>`<div class="row" onclick="show(${i})"><div><b>${esc(a.name)}</b></div></div>`).join(""):"<p>Walang nahanap.</p>";
+ $("list").innerHTML=r.length?r.map(({a,i})=>`<div class="row"><div class="t" onclick="show(${i})"><b>${esc(a.name)}</b><small>v${esc(a.version)} • ${esc(a.size)}</small></div><a class="dl" href="${esc(a.apk)}" download>I-download</a></div>`).join(""):"<p>Walang nahanap.</p>";
 }
 function show(i){
  const a=APPS[i];
