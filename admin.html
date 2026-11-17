@@ -14,6 +14,10 @@ input,textarea{width:100%;padding:12px;margin:6px 0 12px;border-radius:10px;bord
 label{font-size:.85rem;color:var(--muted)}
 button{width:100%;background:var(--accent);color:#fff;border:0;border-radius:24px;padding:13px;font-weight:600;font-size:1rem}
 button:disabled{opacity:.5}
+.rel{display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--card);border-radius:12px;padding:10px 12px;margin-top:10px}
+.rel div{min-width:0;overflow-wrap:anywhere}
+.rel button{width:auto;flex:none;background:#d93025;padding:9px 16px;font-size:.9rem}
+#rl{margin-top:6px}
 #log{white-space:pre-wrap;font-size:.9rem;margin-top:14px;line-height:1.5}
 progress{width:100%;height:14px;margin-top:10px;display:none}
 small{color:var(--muted)}
@@ -32,6 +36,10 @@ small{color:var(--muted)}
 <button id="go" onclick="run()">I-upload sa Release at idagdag</button>
 <progress id="pg" max="100" value="0"></progress>
 <div id="log"></div>
+<hr>
+<h2>Mga App sa website</h2>
+<small>Parehong listahan ng website. Ang pagbura ay mag-aalis din ng Release at APK.</small>
+<div id="rl"></div>
 <script>
 const REPO="noelrubio143/MY-APPS-STORE",$=i=>document.getElementById(i);
 $("tk").value=sessionStorage.getItem("tk")||"";
@@ -54,6 +62,50 @@ async function putChunk(api,branch,n,blob){
   }catch(e){if(t==3)throw e;await sleep(1500*t)}
  }
 }
+const API=`https://api.github.com/repos/${REPO}`;
+async function loadRel(){
+ const box=$("rl");box.textContent="Kinukuha...";
+ try{
+  const r=await fetch("apps.json?"+Date.now());
+  const list=await r.json();
+  box.textContent="";
+  if(!list.length){box.textContent="Walang app sa listahan.";return}
+  list.forEach(a=>{
+   const row=document.createElement("div");row.className="rel";
+   const t=document.createElement("div");
+   const b=document.createElement("b");b.textContent=a.name;
+   const sm=document.createElement("small");sm.textContent="v"+a.version+" • "+a.size;
+   t.append(b,document.createElement("br"),sm);
+   const d=document.createElement("button");d.textContent="Burahin";
+   d.onclick=()=>delApp(a,d);
+   row.append(t,d);box.append(row);
+  });
+ }catch(e){box.textContent="May mali: "+e.message}
+}
+async function delApp(a,btn){
+ const tk=$("tk").value.trim();
+ if(!tk){alert("Ilagay muna ang GitHub token.");return}
+ sessionStorage.setItem("tk",tk);
+ if(!confirm('Burahin ang "'+a.name+' '+a.version+'"?\nMaaalis ito sa website at mabubura ang Release at APK nito.'))return;
+ btn.disabled=true;btn.textContent="...";
+ try{
+  const m=String(a.apk||"").match(/\/releases\/download\/([^/]+)\//);
+  if(m){
+   const tag=decodeURIComponent(m[1]);
+   try{
+    const rel=await gh(`${API}/releases/tags/${encodeURIComponent(tag)}`);
+    await gh(`${API}/releases/${rel.id}`,{method:"DELETE"});
+   }catch(e){if(!/Not Found/i.test(e.message))throw e}
+   try{await gh(`${API}/git/refs/tags/${encodeURIComponent(tag)}`,{method:"DELETE"})}catch(e){}
+  }
+  const cur=await gh(`${API}/contents/apps.json`);
+  const list=JSON.parse(unb64(cur.content));
+  const keep=list.filter(x=>!(x.name===a.name&&x.apk===a.apk));
+  await gh(`${API}/contents/apps.json`,{method:"PUT",body:JSON.stringify({message:"remove "+a.name,content:b64(JSON.stringify(keep,null,1)),sha:cur.sha})});
+  await loadRel();
+ }catch(e){alert("May mali: "+e.message);btn.disabled=false;btn.textContent="Burahin"}
+}
+loadRel();
 async function run(){
  const tk=$("tk").value.trim();
  const af=$("af").files[0];
@@ -102,7 +154,7 @@ async function run(){
   const i=list.findIndex(a=>a.name.toLowerCase()==name.toLowerCase());
   if(i>=0)list[i]=entry;else list.push(entry);
   await gh(`${api}/contents/apps.json`,{method:"PUT",body:JSON.stringify({message:"add "+name,content:b64(JSON.stringify(list,null,1)),sha:cur.sha})});
-  log("\nTapos na! Lalabas ang app sa site pagkatapos ng 1-2 minuto.");
+  log("\nTapos na! Lalabas ang app sa site pagkatapos ng 1-2 minuto.");setTimeout(loadRel,90000);
  }catch(e){log("\nMay mali: "+e.message)}
  $("go").disabled=false;$("pg").style.display="none";
 }
