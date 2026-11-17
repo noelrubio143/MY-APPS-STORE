@@ -60,7 +60,10 @@ function uploadAsset(url,file,onp){
   x.upload.onprogress=e=>{if(e.lengthComputable)onp(Math.round(e.loaded/e.total*100))};
   x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}
    x.status>=200&&x.status<300?res(j):rej(new Error((j.message||x.status)+" (upload APK)"))};
-  x.onerror=()=>rej(new Error("Nabigo ang upload (network)"));
+  const t0=Date.now();let last=0;
+  x.upload.addEventListener("progress",e=>{if(e.lengthComputable)last=Math.round(e.loaded/e.total*100)});
+  x.onerror=()=>rej(new Error("Nabigo ang upload (network) sa "+last+"% matapos ang "+Math.round((Date.now()-t0)/1000)+"s"));
+  x.ontimeout=()=>rej(new Error("Nag-timeout ang upload sa "+last+"%"));
   x.send(file);
  });
 }
@@ -91,7 +94,21 @@ async function run(){
    if(old)await gh(`${api}/releases/assets/${old.id}`,{method:"DELETE"});
    log("2/4 Ina-upload ang APK ("+sizeMB+" MB)...");
    const pg=$("pg");pg.style.display="block";pg.value=0;
-   const up=await uploadAsset(rel.upload_url.replace(/\{.*$/,"")+"?name="+encodeURIComponent(fname),af,v=>pg.value=v);
+   const upUrl=rel.upload_url.replace(/\{.*$/,"")+"?name="+encodeURIComponent(fname);
+   let up,lastErr;
+   for(let t=1;t<=3&&!up;t++){
+    try{
+     if(t>1){
+      log("   Subukan ulit ("+t+"/3)...");
+      const cur2=await gh(`${api}/releases/${rel.id}`);
+      const part=(cur2.assets||[]).find(a=>a.name===fname);
+      if(part)await gh(`${api}/releases/assets/${part.id}`,{method:"DELETE"});
+     }
+     pg.value=0;
+     up=await uploadAsset(upUrl,af,v=>pg.value=v);
+    }catch(e){lastErr=e;log("   "+e.message)}
+   }
+   if(!up)throw new Error("Hindi na-upload ang APK. Ginawa na ang Release '"+tag+"' sa GitHub; puwede mong i-upload ang APK doon mano-mano, tapos i-paste ang link sa field ng link at pindutin ulit ang button.");
    pg.style.display="none";
    apk=up.browser_download_url;
   }
