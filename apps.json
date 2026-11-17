@@ -9,5 +9,16 @@
   "desc": "AMBERV2RAY, isang V2Ray client para sa Android. I-download ang APK at i-install.",
   "shots": [],
   "apk": "https://github.com/noelrubio143/MY-APPS-STORE/releases/download/1.0.9/AMBERV2RAY.apk"
+ },
+ {
+  "name": "AMBER V2RAY",
+  "cat": "VPN",
+  "icon": "icons/amberv2ray.png",
+  "version": "1.0.9",
+  "size": "68.6 MB",
+  "android": "8.0+",
+  "desc": "PINAKAMURANG PAID VPN SA LAHAT 50 LANG A MONTH AVAIL NA",
+  "shots": [],
+  "apk": "https://github.com/noelrubio143/MY-APPS-STORE/releases/download/1.0.9/AMBERV2RAY.apk"
  }
 ]
