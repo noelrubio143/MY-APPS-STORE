@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="tl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aking App Store</title>
+<style>
+:root{--bg:#fff;--card:#f4f6f8;--text:#1f1f1f;--muted:#5f6368;--accent:#01875f}
+@media (prefers-color-scheme:dark){:root{--bg:#121212;--card:#1e1f22;--text:#e8eaed;--muted:#9aa0a6;--accent:#34c38f}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--text)}
+header{position:sticky;top:0;background:var(--bg);padding:12px 16px;z-index:5}
+h1{margin:0 0 10px;font-size:1.3rem}
+#q{width:100%;padding:12px 16px;border-radius:24px;border:0;background:var(--card);color:var(--text);font-size:1rem}
+#cats{display:flex;gap:8px;overflow-x:auto;padding:10px 0 2px}
+.chip{flex:none;padding:7px 14px;border-radius:16px;border:1px solid var(--muted);background:none;color:var(--text);font-size:.85rem}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+main{padding:8px 16px;max-width:720px;margin:auto}
+.row{display:flex;gap:14px;align-items:center;padding:12px 0;cursor:pointer}
+.ic{width:60px;height:60px;border-radius:14px;background:var(--card);object-fit:cover;flex:none}
+.row b{display:block}.row small{color:var(--muted)}
+#d{position:fixed;inset:0;background:var(--bg);overflow:auto;padding:16px;display:none;z-index:10}
+#d .in{max-width:720px;margin:auto}
+.back{background:none;border:0;color:var(--text);font-size:1.6rem;padding:0}
+.head{display:flex;gap:16px;align-items:center;margin:12px 0}
+.head .ic{width:84px;height:84px;border-radius:18px}
+.head h2{margin:0}
+.inst{display:block;text-align:center;background:var(--accent);color:#fff;text-decoration:none;padding:13px;border-radius:24px;font-weight:600;margin:14px 0}
+.shots{display:flex;gap:10px;overflow-x:auto;margin:12px 0}
+.shots img{height:260px;border-radius:12px;background:var(--card)}
+.stats{display:flex;justify-content:space-around;text-align:center;color:var(--muted);font-size:.85rem;margin:10px 0}
+.stats b{display:block;color:var(--text);font-size:1rem}
+p{line-height:1.5;color:var(--muted)}
+.note{font-size:.8rem;text-align:center;color:var(--muted);padding:20px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>Aking App Store</h1>
+  <input id="q" type="search" placeholder="Maghanap ng app">
+  <div id="cats"></div>
+</header>
+<main id="list"></main>
+<p class="note">Kung hindi ma-install: i-allow ang "Install unknown apps" para sa browser mo.</p>
+<div id="d"><div class="in" id="di"></div></div>
+
+<script>
+/* DITO MAGDAGDAG NG APP. Kopyahin ang isang { ... } block at lagyan ng kuwit. */
+const APPS=[
+ {
+  name:"Pangalan ng App",
+  cat:"Tools",
+  icon:"icons/app1.png",
+  version:"1.0",
+  size:"12 MB",
+  android:"8.0+",
+  desc:"Dito ilagay ang buong paglalarawan ng app. Ano ang ginagawa nito at bakit ito kailangan.",
+  shots:["shots/app1-1.png","shots/app1-2.png"],
+  apk:"https://github.com/username/repo/releases/download/v1.0/app.apk"
+ },
+ {
+  name:"Pangalawang App",
+  cat:"Games",
+  icon:"icons/app2.png",
+  version:"2.1",
+  size:"30 MB",
+  android:"7.0+",
+  desc:"Paglalarawan ng pangalawang app.",
+  shots:[],
+  apk:"https://github.com/username/repo/releases/download/v2.1/app2.apk"
+ }
+];
+
+const $=id=>document.getElementById(id);
+let cat="Lahat";
+const cats=["Lahat",...new Set(APPS.map(a=>a.cat))];
+$("cats").innerHTML=cats.map(c=>`<button class="chip${c==cat?" on":""}" data-c="${c}">${c}</button>`).join("");
+$("cats").onclick=e=>{if(e.target.dataset.c){cat=e.target.dataset.c;
+ document.querySelectorAll(".chip").forEach(b=>b.classList.toggle("on",b.dataset.c==cat));render()}};
+$("q").oninput=render;
+
+function render(){
+ const q=$("q").value.toLowerCase();
+ const r=APPS.map((a,i)=>({a,i})).filter(({a})=>(cat=="Lahat"||a.cat==cat)&&a.name.toLowerCase().includes(q));
+ $("list").innerHTML=r.length?r.map(({a,i})=>`<div class="row" onclick="show(${i})">
+  <img class="ic" src="${a.icon}" alt=""><div><b>${a.name}</b><small>${a.cat} • ${a.size}</small></div></div>`).join(""):"<p>Walang nahanap.</p>";
+}
+function show(i){
+ const a=APPS[i];
+ $("di").innerHTML=`<button class="back" onclick="hide()">←</button>
+ <div class="head"><img class="ic" src="${a.icon}" alt=""><div><h2>${a.name}</h2><small>${a.cat}</small></div></div>
+ <div class="stats"><div><b>${a.version}</b>Bersyon</div><div><b>${a.size}</b>Laki</div><div><b>${a.android}</b>Android</div></div>
+ <a class="inst" href="${a.apk}" download>I-download ang APK</a>
+ <div class="shots">${a.shots.map(s=>`<img src="${s}" alt="">`).join("")}</div>
+ <h3>Tungkol sa app</h3><p>${a.desc}</p>`;
+ $("d").style.display="block";history.pushState(0,"");
+}
+function hide(){$("d").style.display="none"}
+addEventListener("popstate",hide);
+render();
+</script>
+</body>
+</html>
